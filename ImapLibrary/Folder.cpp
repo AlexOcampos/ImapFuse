@@ -1,11 +1,8 @@
 /**
- * Folder.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: Folder class
- * Updated: 28/03/2011
- * 
+ * @file Folder.h
+ * @author Alejandro Ocampos Veiga
+ * @brief Folder class functions. Adapted from Althea Project by Alejandro Ocampos for ImapFuse.
+ * @date 23/03/2011
  */
 
 #include <iostream>

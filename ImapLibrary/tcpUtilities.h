@@ -1,12 +1,13 @@
 /**
- * tcpUtilities.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Althea description: "Adapted in C from Douglas Comer's 'Internetworking
- * with TCP/IP' by Jeff Ondich and Lauren Jantz, summer 1995.
- * Rewritten in C++, Jeff Ondich, January 2000"
- * 
+ * @file tcpUtilities.h
+ * @author Alejandro Ocampos Veiga
+ * @brief Adapted in C from Douglas Comer's 'Internetworking with TCP/IP' 
+ * by Jeff Ondich and Lauren Jantz, summer 1995. Rewritten in C++, 
+ * Jeff Ondich, January 2000. These are utility functions that are 
+ * intended to make very simple TCP-based client/server programs 
+ * relatively easy to write. Adapted from Althea Project by Alejandro 
+ * Ocampos for ImapFuse.
+ * @date 30/03/2011
  */
 
 // changes to allow comile on Suns and BSD Boxen thanks to Thomas Strömberg

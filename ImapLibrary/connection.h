@@ -1,11 +1,10 @@
 /**
- * connection.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: establishes the ACon type so that information about the
- * connection may be passed arround
- * Updated: 28/03/2011
+ * @file connection.h
+ * @author Alejandro Ocampos Veiga
+ * @brief Establishes the ACon type so that information about the 
+ * connection may be passed arround. Adapted from Althea Project by 
+ * Alejandro Ocampos for ImapFuse.
+ * @date 30/03/2011
  * 
  */
 

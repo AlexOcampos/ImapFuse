@@ -1,11 +1,8 @@
 /**
- * imapLiterals.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: string literals used in imap.cpp
- * Updated: 22/03/2011
- * 
+ * @file imapLiterals.h
+ * @author Alejandro Ocampos Veiga
+ * @brief String literals used in imap.cpp. Adapted from Althea Project by Alejandro Ocampos for ImapFuse
+ * @date 30/03/2011
  */
 
 #ifndef IMAPLITERALS_H

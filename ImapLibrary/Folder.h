@@ -1,11 +1,8 @@
 /**
- * Folder.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: Folder definitions
- * Updated: 28/03/2011
- * 
+ * @file Folder.h
+ * @author Alejandro Ocampos Veiga
+ * @brief Message Folder definitions. Adapted from Althea Project by Alejandro Ocampos for ImapFuse.
+ * @date 30/03/2011
  */
 
 #ifndef FOLDER_H

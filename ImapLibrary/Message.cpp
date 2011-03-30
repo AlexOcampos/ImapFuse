@@ -1,11 +1,8 @@
 /**
- * Message.cpp
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: Functions of Message class.
- * Updated: 22/03/2011
- * 
+ * @file Message.cpp
+ * @author Alejandro Ocampos Veiga
+ * @brief Functions of Message class. Adapted from Althea Project by Alejandro Ocampos for ImapFuse
+ * @date 30/03/2011
  */
 
 #include <iostream>

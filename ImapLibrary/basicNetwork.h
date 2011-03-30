@@ -1,11 +1,8 @@
 /**
- * basicNetwork.h
- *
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- *
- * Description: Basic IMAP functions
- * Updated: 28/03/2011
- *
+ * @file basicNetwork.h
+ * @author Alejandro Ocampos Veiga
+ * @brief Basic IMAP functions (header). Adapted from Althea Project by Alejandro Ocampos for ImapFuse.
+ * @date 30/03/2011
  */
  
 #ifndef BASICNETWORK_H

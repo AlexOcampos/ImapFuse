@@ -1,15 +1,12 @@
 /**
- * main.cpp
- * Created by: Alejandro Ocampos
- * Updated: 28/03/2011
- * Description: This is an example of an imap session. Firstly, it logins
+ * @file main.cpp
+ * @author Alejandro Ocampos
+ * @date 30/03/2011
+ * @brief This is an example of an imap session. Firstly, it logins 
  * to server. Secondly, it gets a folder list from the server. After, it
  * selects a folder (the first in previously list), and it gets a email
  * list from that folder. Finally, it gets the header and the body of a
  * email, and logout.
- * 
- * This is an alpha version. There are a lot of mistakes and debug 
- * messages.
  */
 #include    <iostream>
 #include    <stdlib.h>

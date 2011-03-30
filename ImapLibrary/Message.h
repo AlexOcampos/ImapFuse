@@ -1,11 +1,9 @@
 /**
- * Message.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: The all important message class.
- * Updated: 22/03/2011
- * 
+ * @file Message.h
+ * @author Alejandro Ocampos Veiga
+ * @brief The all important message class. Adapted from Althea Project 
+ * by Alejandro Ocampos for ImapFuse.
+ * @date 30/03/2011
  */
 
 #ifndef MESSAGE_H

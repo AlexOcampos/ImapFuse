@@ -1,7 +1,8 @@
 /**
- * imapFuse.cpp
- * Author: Alejandro Ocampos
- * Updated: 28/03/2011
+ * @file imapFuse.cpp
+ * @brief This file contain the functions which will be connected to FUSE.
+ * @author Alejandro Ocampos Veiga
+ * @date 30/03/2011
  */
 
 #define FUSE_USE_VERSION 26
@@ -34,7 +35,12 @@ static string pass;
 static bool usessl;
 static list<Folder> folder_list;	// List of folders
 
-
+/**
+ * This metod obtain the attributes of a file.
+ * @param path The path of the file
+ * @param stbuf The place where the stat structure with his attributes will be save
+ * @return 0 on success
+ */
 static int ImapFuse_getattr(const char *path, struct stat *stbuf)
 {
 	int res = 0;
@@ -107,8 +113,8 @@ static int ImapFuse_read(const char *path, char *buf, size_t size, off_t offset,
 
 /**
  * Add folder to folder list
- * @param F : A folder object
- * @param folder_root : name of folder root
+ * @param F A folder object
+ * @param folder_root name of folder root
  */ 
 void add_Folder(Folder &F, string folder_root) {
     F.set_Full_Folder_Name( folder_root + "/" + F.get_Folder_Name() );
@@ -118,8 +124,8 @@ void add_Folder(Folder &F, string folder_root) {
 
 /**
  * Convert a list of folder names in a list of Folder objects
- * @param folder_names : A list<strings> with the folder names
- * @param folder_root : name of folder root
+ * @param folder_names A list<strings> with the folder names
+ * @param folder_root name of folder root
  */
 void create_folder_list( list<string> folder_names, string folder_root) {
 	Folder *F;
@@ -137,7 +143,7 @@ void create_folder_list( list<string> folder_names, string folder_root) {
 
 /**
  * Obtain a list of folders
- * @param folder_root : name of folder root
+ * @param folder_root name of folder root
  * @return SUCCESS or LIST_FAILED
  */ 
 int get_folders_list(string folder_root) {

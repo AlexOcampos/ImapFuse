@@ -1,11 +1,9 @@
 /**
- * errors.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: set an array of errornumbers and what they mean
- * Updated: 28/03/2011
- * 
+ * @file error.h
+ * @author Alejandro Ocampos Veiga
+ * @brief sSet an array of errornumbers and what they mean. Adapted from
+ * Althea Project by Alejandro Ocampos for ImapFuse.
+ * @date 30/03/2011
  */
 
 #ifndef ERRORS_H

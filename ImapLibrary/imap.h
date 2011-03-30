@@ -1,13 +1,11 @@
 /**
- * imap.h
- * 
- * Adapted from Althea Project by Alejandro Ocampos for ImapFuse
- * 
- * Description: imap basic functions (header)
+ * @file imap.h
+ * @author Alejandro Ocampos Veiga
+ * @brief  Imap basic functions (header). Adapted from Althea Project by Alejandro Ocampos for ImapFuse
  * Caution: Currently only the following functions were tested:
  * IMAPLogin, getIMAPFolders, SelectFolder, GetNewMail, IMAPLogout,
  * GetMessageHeader, GetLineText, GetFlags, tolower 
- * Updated: 23/03/2011
+ * @date 30/03/2011
  * 
  */
 

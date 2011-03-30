@@ -2,13 +2,13 @@
 *					ImapFuse					   	   *
 ****************************************************************************************************
 *   Author: Alejandro Ocampos Veiga								   *
-*   Email: alexocamposveiga [at] gmail [dot] com						   *
+*   Email: alexocamposveiga[at]gmail[dot]com						 	   *
 *                                                                                                  *
 *   Objective: Develop a virtual file system that displays the contents of an email stored on a    *
 *   remote server. Access will be through the IMAP protocol. The file system will be developed     *
 *   using the FUSE library for UNIX systems							   *
 *												   *
-*   Resources: Fuse library (http://fuse.sourceforge.net/) for the filesystem, and Althea project  *
-*	(http://althea.sourceforge.net/) for the Imap library.					   *
+*   Resources: Fuse library (http://fuse.sourceforge.net/) for the filesystem, Althea project      *
+*	(http://althea.sourceforge.net/) for the Imap library, and fusecpp.h (www.circlesoft.com). *
 *												   *
 ****************************************************************************************************

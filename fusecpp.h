@@ -1,8 +1,10 @@
 /**
- * @(#) fusecpp.h - allow access to fuse from C++
- *
- * Gerard J. Cerchio www.circlesoft.com
- *
+ * @file tcpUtilities.cpp
+ * @author Alejandro Ocampos Veiga
+ * @brief Allow access to fuse from C++ ; Original version from Gerald
+ * Cerchio for www[dot]circlesoft[dot]com, adapted from Alejandro Ocampos 
+ * for ImapFuse.
+ * @date 30/03/2011
  */
 
 #ifndef AFS_h_h

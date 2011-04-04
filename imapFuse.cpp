@@ -37,6 +37,7 @@ static list<Folder> folder_list;	// List of folders in folder root
 
 // Methods header
 Folder* search_folder(char * name);
+int get_folders_list_from_server(string folder_root, Folder* folder);
 
 // FUSE methods
 /**
@@ -51,20 +52,20 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 	if (strcmp(path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
-	} else if (strcmp(path, hello_path) == 0) {
+	} else if (strcmp(path, hello_path) == 0) {	// DEBUG
 		stbuf->st_mode = S_IFREG | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = strlen(hello_str);
-	} else { // Si es una carpeta
-		//res = -ENOENT;
-		stbuf->st_mode = S_IFDIR | 0755;
+	} else if (search_folder((char *)path) != NULL) {	// If it is a dir in folder root
+		stbuf->st_mode = S_IFDIR | 0555;	// dr-xr-xr-x
 		stbuf->st_nlink = 2;
 		stbuf->st_uid = getuid();
 		stbuf->st_gid = getgid();
 		stbuf->st_size = 0;
 		stbuf->st_blksize = 4096;
 		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
-	}
+	} else
+		res = -ENOENT;
 
 	return res;
 }
@@ -117,20 +118,26 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		if (f != NULL) {
 			filler(buf, ".", NULL, 0);
 			filler(buf, "..", NULL, 0);
-			filler(buf, "holahola", NULL, 0); // DEBUG
+			filler(buf, "aqui mostraré los emails o subdirectorios", NULL, 0); // DEBUG
 			return 0;
 		}
 		
 		return -ENOENT;
 	} else {
-		filler(buf, ".", NULL, 0);
-		filler(buf, "..", NULL, 0);
-		list<Folder>::iterator itera = folder_list.begin();
-		while(itera != folder_list.end()) {
-			filler(buf, ((*itera).get_Folder_Name()).c_str(), NULL, 0);
-			itera++;
+		folder_list.clear(); // vaciar folder_list
+		if (get_folders_list_from_server("", NULL) == SUCCESS) {	// Obtain list of folders from folder root
+		
+			filler(buf, ".", NULL, 0);
+			filler(buf, "..", NULL, 0);
+			list<Folder>::iterator itera = folder_list.begin();
+			while(itera != folder_list.end()) {
+				filler(buf, ((*itera).get_Folder_Name()).c_str(), NULL, 0);
+				itera++;
+			}
+		} else {
+			filler(buf, "no funciona", NULL, 0);
+			return -ENOENT;
 		}
-		filler(buf, hello_path + 1, NULL, 0);
 	}
 	return 0;
 }
@@ -186,16 +193,21 @@ Folder* search_folder(char * name) {
 // Imap Methods
 /**
  * Obtain a list of folders
- * @param folder_root name of folder root
+ * @param folder_root Name of folder root
+ * @param folder NULL if it is the folder root ("/") or a Folder*
  * @return SUCCESS or LIST_FAILED
  */ 
-int get_folders_list_from_server(string folder_root) {
+int get_folders_list_from_server(string folder_root, Folder* folder) {
 	int return_code;
 	list<string> folder_names;
 	return_code = getIMAPFolders(connection, folder_names, folder_root );
-	if( return_code == SUCCESS ) {
+	if ((return_code == SUCCESS ) && (folder == NULL)) {
+		cout << "folder null" << endl;
         create_folder_list(folder_names, folder_root);
-    }
+    } else if ((return_code == SUCCESS) && (folder != NULL)) {
+		cout << "folder no null" << endl;
+		// create folder list in the specified folder
+	}
 	return return_code;
 }
 
@@ -235,7 +247,6 @@ int main(int argc, char *argv[]) {
 	dispatcher->set_read	(&ImapFuse_read);
 	
 	login();
-	get_folders_list_from_server("");
 	
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

@@ -42,6 +42,10 @@ int Folder::get_Num_Messages() {
     return(message_list.size());
 }
 
+int Folder::get_Num_subFolders() {
+	return(subfolder_list->size());
+}
+
 int Folder::get_Sequence_Start() {
     return(sequence_start);
 }
@@ -52,6 +56,23 @@ int Folder::get_Sequence_Stop() {
 
 Server * Folder::get_Server_Ptr() {
     return server_ptr;
+}
+
+Folder * Folder::get_subFolder( int n ) {
+    list<Folder>::iterator it;
+    int count = 1;
+    
+    it = subfolder_list->begin();
+	if (n < 0)
+		return NULL;	// The subfolder does not exist
+    while( it != subfolder_list->end() && count < n ) {
+        count++;
+        it++;
+    }
+    if(count <= get_Num_subFolders())
+        return(&( *it ));	// The subfolder does not exist
+    else
+        return(NULL);
 }
 
 Message * Folder::get_Message( int n ) {
@@ -75,6 +96,9 @@ string Folder::get_Full_Folder_Name() {
     return(full_folder_name);
 }
 
+void Folder::add_subFolder(Folder F) {
+	subfolder_list->push_back( F );
+}
 
 void Folder::add_Message(Message M) {
     message_list.push_back( M );

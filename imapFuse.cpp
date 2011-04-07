@@ -37,6 +37,8 @@ static list<Folder> folder_list;	// List of folders in folder root
 
 // Methods header
 Folder* search_folder(char * name);
+Folder* search_subfolder_in_folder(char* name, Folder* f);
+Folder* search_subfolder(char * name);
 int get_folders_list_from_server(string folder_root, Folder* folder);
 
 // FUSE methods
@@ -56,7 +58,16 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_mode = S_IFREG | 0444;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = strlen(hello_str);
-	} else if (search_folder((char *)path) != NULL) {	// If it is a dir in folder root
+	} else if (search_folder(((char *)path)+1) != NULL) {	// If it is a dir in folder root
+		// I do path + 1, because the path is like /folder_name (ignore / in the search)
+		stbuf->st_mode = S_IFDIR | 0555;	// dr-xr-xr-x
+		stbuf->st_nlink = 2;
+		stbuf->st_uid = getuid();
+		stbuf->st_gid = getgid();
+		stbuf->st_size = 0;
+		stbuf->st_blksize = 4096;
+		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
+	} else if (search_subfolder((char *) path) != NULL) {	// If it is a subfolder
 		stbuf->st_mode = S_IFDIR | 0555;	// dr-xr-xr-x
 		stbuf->st_nlink = 2;
 		stbuf->st_uid = getuid();
@@ -111,31 +122,44 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	(void) offset;
 	(void) fi;
 
-	if (strcmp(path, "/") != 0) {// Si no estamos en el directorio raiz del email
-		// Mirar si está en la lista de folders
+	if (strcmp(path, "/") != 0) {// If it isn't the folder root
 		Folder* f;
-		f = search_folder((char *)path);
-		if (f != NULL) {
+		f = search_folder(((char *)path)+1); // I do path + 1, because the path is like /folder_name (ignore / in the search)
+		if (f != NULL) {	// If folder exists
+			// The rigor entries
 			filler(buf, ".", NULL, 0);
 			filler(buf, "..", NULL, 0);
-			filler(buf, "aqui mostraré los emails o subdirectorios", NULL, 0); // DEBUG
+			
+			// Obtain subfolders (if exists)
+			get_folders_list_from_server(path+1, f); // path+1 because the path is like /name
+			int num_subfolders = f->get_Num_subFolders();	// num of subfolders
+			if (num_subfolders > 0) {
+				int i;
+				for (i=1;i<=num_subfolders;i++) {
+					Folder *tempfolder = f->get_subFolder(i);
+					filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
+				}
+			}
+			
+			// Obtain emails (if exists)
+			filler(buf, "aqui mostraré los emails ", NULL, 0); // DEBUG
 			return 0;
 		}
 		
 		return -ENOENT;
 	} else {
-		folder_list.clear(); // vaciar folder_list
 		if (get_folders_list_from_server("", NULL) == SUCCESS) {	// Obtain list of folders from folder root
-		
+			// The rigor entries
 			filler(buf, ".", NULL, 0);
 			filler(buf, "..", NULL, 0);
+			
+			// Obtain all the folders
 			list<Folder>::iterator itera = folder_list.begin();
 			while(itera != folder_list.end()) {
 				filler(buf, ((*itera).get_Folder_Name()).c_str(), NULL, 0);
 				itera++;
 			}
-		} else {
-			filler(buf, "no funciona", NULL, 0);
+		} else {	// An error has been ocurred
 			return -ENOENT;
 		}
 	}
@@ -151,6 +175,18 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 void add_Folder(Folder &F, string folder_root) {
     F.set_Full_Folder_Name( folder_root + "/" + F.get_Folder_Name() );
     folder_list.push_back( F );    
+    return;
+}
+
+/**
+ * Add folder to folder list
+ * @param F folder object
+ * @param folder_root name of folder root
+ * @param folder parent folder
+ */ 
+void add_Folder_in_folder(Folder F, string folder_root, Folder* folder) {
+    F.set_Full_Folder_Name( folder_root + "/" + F.get_Folder_Name() );
+    folder->add_subFolder(F); 
     return;
 }
 
@@ -174,19 +210,91 @@ void create_folder_list( list<string> folder_names, string folder_root) {
 }
 
 /**
+ * Convert a list of folder names in a list of Folder objects
+ * @param folder_names A list<strings> with the folder names
+ * @param folder_root name of folder root
+ */
+void create_folder_list_in_folder( list<string> folder_names, string folder_root, Folder* folder) {
+	Folder *F;
+	list<string>::iterator it = folder_names.begin();
+	while( it != folder_names.end() )
+	{
+		if( *it != "\r" ) { // Because of the way the names were parsed, there's a \r in the empty name
+			F = new Folder( *it );
+			add_Folder_in_folder(*F, folder_root, folder);
+		}
+		it++;
+	}
+	return;
+}
+
+/**
  * Search for a folder in folder_list.
  * @param name Name of folder.
  * @return The folder object.
  */
-Folder* search_folder(char * name) {
+Folder* search_folder(char* name) {
 	list<Folder>::iterator itera = folder_list.begin();
 	while(itera != folder_list.end()) {
-		if (strcmp(name+1, ((*itera).get_Folder_Name()).c_str()) == 0) {
+		if (strcmp(name, ((*itera).get_Folder_Name()).c_str()) == 0) {
 			return &(*itera);
 		}
 		itera++;
 	}
 	
+	return NULL;
+}
+
+/**
+ * Search for a folder in other folder.
+ * @param name Name of folder.
+ * @return The folder object.
+ */
+Folder* search_subfolder(char* name) {
+	Folder* f = NULL;
+	char* pathtemp = (char*) malloc(strlen(name)+1);
+	char* pch;
+	
+	strncpy(pathtemp, name, strlen(name)+1);	// make a copy of name
+	pch = strtok(pathtemp,"/");
+	
+	// Obtain parent folder
+	f = search_folder(pch);
+	if (f == NULL) {
+		free(pathtemp);
+		return NULL;
+	}
+	
+	// Obtain subfolder
+	while (pch != NULL) {
+		pch = strtok(NULL, "/");
+		if (f == NULL)
+			return NULL;
+		if (pch == NULL) 
+			break;
+		f = search_subfolder_in_folder(pch, f);
+	}
+	
+	free(pathtemp);
+	return f;
+}
+
+/**
+ * Search for a subfolder in a specified folder.
+ * @param name Name of folder.
+ * @param f folder object.
+ * @return The folder object.
+ */
+Folder* search_subfolder_in_folder(char* name, Folder* f) {
+	int i;
+	Folder* folder_temp;
+	string folder_name;
+	for (i=1; i<=f->get_Num_subFolders(); i++) {	// Search in list of subfolders of the current folder
+		folder_temp = f->get_subFolder(i);
+		folder_name = folder_temp->get_Folder_Name();
+		if (strcmp((folder_name.c_str()), name) == 0)
+			return folder_temp;
+	}
 	return NULL;
 }
 
@@ -202,11 +310,13 @@ int get_folders_list_from_server(string folder_root, Folder* folder) {
 	list<string> folder_names;
 	return_code = getIMAPFolders(connection, folder_names, folder_root );
 	if ((return_code == SUCCESS ) && (folder == NULL)) {
-		cout << "folder null" << endl;
-        create_folder_list(folder_names, folder_root);
+		// create folder list in folder root
+		folder_list.clear(); // empty folder_list
+        create_folder_list(folder_names, folder_root);	// obtain a new list
     } else if ((return_code == SUCCESS) && (folder != NULL)) {
-		cout << "folder no null" << endl;
 		// create folder list in the specified folder
+		folder->clear_subfolders();	// empty subfolder_list
+		create_folder_list_in_folder(folder_names, folder_root, folder); // obtain a new list	
 	}
 	return return_code;
 }
@@ -247,6 +357,21 @@ int main(int argc, char *argv[]) {
 	dispatcher->set_read	(&ImapFuse_read);
 	
 	login();
+	/*Folder *folder = new Folder("[Gmail]");
+	get_folders_list_from_server("[Gmail]", folder);
+	cout << "FOLDER LIST SUBFOLDER: " << folder->get_Num_subFolders() << endl;*/
+	
+	/*get_folders_list_from_server("", NULL);
+	Folder* f;
+	f = search_folder((char *)"[Gmail]");
+	if (f == NULL) 
+		cout << "es nulo" << endl;
+	get_folders_list_from_server("[Gmail]", f);
+	if (search_subfolder((char *)"/[Gmail]/Borradores") == NULL)
+		cout << "null" << endl;
+	else
+		cout << "no null" << endl;*/
+	
 	
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

@@ -19,7 +19,7 @@ private:
     string folder_name;
     string full_folder_name;
     list<Message> message_list;		// List of emails
-    list<Folder>* subfolder_list;	// List of subfolders
+    list<Folder> subfolder_list;	// List of subfolders
     int sequence_start;
     int sequence_stop;
     Server *server_ptr;
@@ -29,14 +29,12 @@ public:
     // Constructors
     Folder() {
         Folder("New Folder");
-		subfolder_list = NULL;
     };
 
     Folder(string name) {
         folder_name = name;
         sequence_start = 0;
 		sequence_stop = 0;
-		subfolder_list = NULL;
     };
 
 
@@ -65,6 +63,7 @@ public:
     int get_Message_Headers();
     int expunge_Deleted_Mail();
     void clear();
+    void clear_subfolders();
     
     // Debugging purposes only
     void display();

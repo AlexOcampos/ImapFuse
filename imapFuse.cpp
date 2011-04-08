@@ -124,7 +124,19 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	if (strcmp(path, "/") != 0) {// If it isn't the folder root
 		Folder* f;
-		f = search_folder(((char *)path)+1); // I do path + 1, because the path is like /folder_name (ignore / in the search)
+		char* folder1;
+		char* temppath = (char*) malloc(strlen(path)+1);
+		
+		strncpy(temppath,path,strlen(path)+1);
+		folder1 = strtok(temppath, "/");
+		/*while (folder1 != NULL) {
+			folder1 = strtok(NULL, "/\n");
+			if (folder1 == NULL)
+				continue;
+				cout << "f1: " << folder1 << endl;
+		}*/
+		
+		f = search_folder(folder1); // I do path + 1, because the path is like /folder_name (ignore / in the search)
 		if (f != NULL) {	// If folder exists
 			// The rigor entries
 			filler(buf, ".", NULL, 0);
@@ -143,11 +155,20 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			
 			// Obtain emails (if exists)
 			filler(buf, "aqui mostraré los emails ", NULL, 0); // DEBUG
+			
+			free(temppath);
+			return 0;
+		} else {
+			// The rigor entries
+			filler(buf, ".", NULL, 0);
+			filler(buf, "..", NULL, 0);
+			
+			filler(buf, path, NULL, 0);
 			return 0;
 		}
 		
-		return -ENOENT;
-	} else {
+		//return -ENOENT;
+	} else {	// We are in folder root
 		if (get_folders_list_from_server("", NULL) == SUCCESS) {	// Obtain list of folders from folder root
 			// The rigor entries
 			filler(buf, ".", NULL, 0);
@@ -300,9 +321,9 @@ Folder* search_subfolder_in_folder(char* name, Folder* f) {
 
 // Imap Methods
 /**
- * Obtain a list of folders
+ * Obtain a list of folders. If it is a subfolder, the function gets the folder list of each folder in the path. If that folder list already exists, refresh it.
  * @param folder_root Name of folder root
- * @param folder NULL if it is the folder root ("/") or a Folder*
+ * @param folder NULL if it is the folder root ("/") or a Folder* if it's a subfolder
  * @return SUCCESS or LIST_FAILED
  */ 
 int get_folders_list_from_server(string folder_root, Folder* folder) {
@@ -357,6 +378,7 @@ int main(int argc, char *argv[]) {
 	dispatcher->set_read	(&ImapFuse_read);
 	
 	login();
+	
 	/*Folder *folder = new Folder("[Gmail]");
 	get_folders_list_from_server("[Gmail]", folder);
 	cout << "FOLDER LIST SUBFOLDER: " << folder->get_Num_subFolders() << endl;*/
@@ -372,6 +394,24 @@ int main(int argc, char *argv[]) {
 	else
 		cout << "no null" << endl;*/
 	
+	/*char* folder1;
+	char* path = (char*) "/3x3/inscripciones/2011";
+	char* temppath = (char*) malloc(strlen(path)+1);
+	strncpy(temppath,path,strlen(path)+1);
+	cout << path << endl;
+	cout << temppath << endl;
+	folder1 = strtok(temppath, "/");
+	cout << "f1: " << folder1<<endl;
+	while (folder1 != NULL) {
+		folder1 = strtok(NULL, "/\n");
+		if (folder1 == NULL)
+			continue;
+		cout << "f1: " << folder1 << endl;
+	}
+	free(temppath);*/
+	
+	/*get_folders_list_from_server("", NULL);
+	ImapFuse_readdir("/3x3", NULL, NULL, 0, NULL);*/
 	
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

@@ -81,7 +81,7 @@ int main( int argc, char *argv[] ) {
 	 */
 	cout << endl << "********** getIMAPFolders **********" << endl;		// DEBUG
     list<string> folder_names;
-    folder_root = ""; // Nombre del buzón de correo que queremos que liste
+    folder_root = "3x3"; // Nombre del buzón de correo que queremos que liste
     int return_code;
     
     return_code = getIMAPFolders(connection, folder_names, folder_root );
@@ -109,7 +109,7 @@ int main( int argc, char *argv[] ) {
 	 * Select a folder
 	 * - In order to get the emails of a folder, we must select it before.
 	 */
-	string folderOpenStatus;
+	/*string folderOpenStatus;
 	int numMessages;
 	itera = folder_list.begin();
 	cout << endl << "********** SelectFolders **********" << endl;		// DEBUG
@@ -119,12 +119,12 @@ int main( int argc, char *argv[] ) {
 	if (i == UNKNOWN_MAILBOX)
 		printf("Unknown mailbox - %d\n",i);
 	cout << "numMessages = " << numMessages << " |folderOpenStatus = " << folderOpenStatus << endl;// DEBUG
-
+*/
 	/**
 	 * Get new emails
 	 * - We must select a folder before or the function return us a failure
 	 */
-	printf("\n\n********************************************\n");
+/*	printf("\n\n********************************************\n");
 	cout << "Folder name: " << (*itera).get_Folder_Name() << endl;
 	cout << "Full folder name: " << (*itera).get_Folder_Name() << endl;
 	i = GetNewMail(connection, (*itera));
@@ -150,7 +150,7 @@ int main( int argc, char *argv[] ) {
 			cout << "BODY: " << email->get_Body_Text();					// DEBUG
 	} else
 		cout << "The message does not exist." << endl;
-	
+	*/
 	/**
 	 * Logout
 	 * - Finalize the session

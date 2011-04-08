@@ -94,7 +94,8 @@ int getIMAPFolders(AConPtr the_connection, list<string>& folders, string folderr
 						foldername+=line[i];
 						i++;
 					}
-					if (foldername!="")
+					// If name has a / (it's a subfolder) or it's empty (it doesn't exist), we ignore it.
+					if ((foldername!="") && (foldername.find('/') == string::npos))
 						folders.push_back(foldername); // add the folder to the list
 				}
 			}

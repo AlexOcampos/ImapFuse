@@ -127,15 +127,11 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		char* folder1;
 		char* temppath = (char*) malloc(strlen(path)+1);
 		
-		strncpy(temppath,path,strlen(path)+1);
-		folder1 = strtok(temppath, "/");
-		/*while (folder1 != NULL) {
-			folder1 = strtok(NULL, "/\n");
-			if (folder1 == NULL)
-				continue;
-				cout << "f1: " << folder1 << endl;
-		}*/
+		strncpy(temppath,path,strlen(path)+1);	// get a copy of path, because strtok modifies the string
+		folder1 = strtok(temppath, "/");	// get the first folder name of the path
 		
+		if (get_folders_list_from_server("", NULL) != SUCCESS) // get the folder_list
+			return -ENOENT;
 		f = search_folder(folder1); // I do path + 1, because the path is like /folder_name (ignore / in the search)
 		if (f != NULL) {	// If folder exists
 			// The rigor entries
@@ -143,11 +139,15 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			filler(buf, "..", NULL, 0);
 			
 			// Obtain subfolders (if exists)
-			get_folders_list_from_server(path+1, f); // path+1 because the path is like /name
+			if (get_folders_list_from_server(path+1, f) != SUCCESS) // path+1 because the path is like /name
+				return -ENOENT;
+				
+			f = search_subfolder((char*)path);
+			
 			int num_subfolders = f->get_Num_subFolders();	// num of subfolders
 			if (num_subfolders > 0) {
 				int i;
-				for (i=1;i<=num_subfolders;i++) {
+				for (i=1;i<=num_subfolders;i++) {	// Insert in filler all the subfolder names
 					Folder *tempfolder = f->get_subFolder(i);
 					filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
 				}
@@ -267,7 +267,7 @@ Folder* search_folder(char* name) {
 }
 
 /**
- * Search for a folder in other folder.
+ * Search for a folder in other folder. It needs the complete path to look for it.
  * @param name Name of folder.
  * @return The folder object.
  */
@@ -326,18 +326,55 @@ Folder* search_subfolder_in_folder(char* name, Folder* f) {
  * @param folder NULL if it is the folder root ("/") or a Folder* if it's a subfolder
  * @return SUCCESS or LIST_FAILED
  */ 
-int get_folders_list_from_server(string folder_root, Folder* folder) {
+int get_folders_list_from_server(string path, Folder* folder) {
 	int return_code;
 	list<string> folder_names;
-	return_code = getIMAPFolders(connection, folder_names, folder_root );
-	if ((return_code == SUCCESS ) && (folder == NULL)) {
-		// create folder list in folder root
+	
+	if (folder == NULL) { // Create folder list in folder root
+		return_code = getIMAPFolders(connection, folder_names, path);
+		if (return_code == SUCCESS) {
+			folder_list.clear();// empty folder_list
+			create_folder_list(folder_names, "");// obtain a new list
+		}
+	} else { // create folder list in a specified folder
+		char* pathtemp = (char*) malloc(strlen((char*)path.c_str()) + 2);
+		char* pch;
+		char* path2 = (char*) malloc(strlen((char*)path.c_str()) + 1);
+		
+		strncpy(pathtemp, (char*) path.c_str(), strlen((char*)path.c_str())+1); // makes a copy of path
+		
+		pch = strtok(pathtemp,"/");	// gets the first folder name in the folder hierarchy
+		if (pch == NULL) 	// The name is NULL
+			return LIST_FAILED;
+		strncpy(path2,pch,strlen(pch)+1); // to get the actual path
+		
+		// Obtain de folder root list
+		folder_names.clear();
+		return_code = getIMAPFolders(connection, folder_names, "");	// get the folder names in folder root
+		if (return_code != SUCCESS)
+			return return_code;
+		
 		folder_list.clear(); // empty folder_list
-        create_folder_list(folder_names, folder_root);	// obtain a new list
-    } else if ((return_code == SUCCESS) && (folder != NULL)) {
-		// create folder list in the specified folder
-		folder->clear_subfolders();	// empty subfolder_list
-		create_folder_list_in_folder(folder_names, folder_root, folder); // obtain a new list	
+		create_folder_list(folder_names, "");// obtain a new list
+		
+		Folder* f = search_folder(pch); // gets the first folder in the folder hierarchy
+		
+		while (pch != NULL) {
+			folder_names.clear();
+			return_code = getIMAPFolders(connection, folder_names, path2); // get subfolder names list
+			f->clear_subfolders();	// empty subfolder_list
+			create_folder_list_in_folder(folder_names, path2, f); // get a new list	
+			
+			pch = strtok(NULL, "/"); // obtain new folder name
+			if (pch == NULL)	// if there aren't any more, we've finished
+				break;
+			strcat(path2, "/");
+			strncat(path2, pch, strlen(pch)+1);	// Get the actual path
+			
+			f = search_subfolder(path2); // Obtain the folder object with the name stored in pch.
+			// (we pass the absolute path stored in "path2")
+		}
+		
 	}
 	return return_code;
 }
@@ -411,7 +448,11 @@ int main(int argc, char *argv[]) {
 	free(temppath);*/
 	
 	/*get_folders_list_from_server("", NULL);
-	ImapFuse_readdir("/3x3", NULL, NULL, 0, NULL);*/
+	Folder* f = search_folder((char*)"3x3");
+	get_folders_list_from_server("/3x3/Inscripciones", f);*/
+	
+	//ImapFuse_readdir("/3x3/Inscripciones", NULL, NULL, NULL, NULL) ;
+
 	
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

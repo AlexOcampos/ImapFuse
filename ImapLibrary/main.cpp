@@ -81,7 +81,7 @@ int main( int argc, char *argv[] ) {
 	 */
 	cout << endl << "********** getIMAPFolders **********" << endl;		// DEBUG
     list<string> folder_names;
-    folder_root = "3x3"; // Nombre del buzón de correo que queremos que liste
+    folder_root = ""; // Nombre del buzón de correo que queremos que liste
     int return_code;
     
     return_code = getIMAPFolders(connection, folder_names, folder_root );
@@ -109,22 +109,22 @@ int main( int argc, char *argv[] ) {
 	 * Select a folder
 	 * - In order to get the emails of a folder, we must select it before.
 	 */
-	/*string folderOpenStatus;
+	string folderOpenStatus;
 	int numMessages;
 	itera = folder_list.begin();
 	cout << endl << "********** SelectFolders **********" << endl;		// DEBUG
 	cout << "Folder name: " << (*itera).get_Folder_Name() << endl;		// DEBUG
 	cout << "Full folder name: " << (*itera).get_Full_Folder_Name() << endl;// DEBUG
-	i = SelectFolder(connection, (*itera).get_Folder_Name(), numMessages, folderOpenStatus);
+	i = SelectFolder(connection, "3x3", numMessages, folderOpenStatus);
 	if (i == UNKNOWN_MAILBOX)
 		printf("Unknown mailbox - %d\n",i);
 	cout << "numMessages = " << numMessages << " |folderOpenStatus = " << folderOpenStatus << endl;// DEBUG
-*/
+
 	/**
 	 * Get new emails
 	 * - We must select a folder before or the function return us a failure
 	 */
-/*	printf("\n\n********************************************\n");
+	printf("\n\n********************************************\n");
 	cout << "Folder name: " << (*itera).get_Folder_Name() << endl;
 	cout << "Full folder name: " << (*itera).get_Folder_Name() << endl;
 	i = GetNewMail(connection, (*itera));
@@ -138,19 +138,19 @@ int main( int argc, char *argv[] ) {
 															// primero necesitamos coger uno de la lista (orden por id)
 	if (email != NULL) {
 		cout << "From: " << email->get_From_Address() << endl;			// DEBUG
-		cout << "Have body? " << email->have_Body_Text() << endl;		// DEBUG
-		cout << "Date: " << email->get_Date() << endl;					// DEBUG
+		//cout << "Have body? " << email->have_Body_Text() << endl;		// DEBUG
+		//cout << "Date: " << email->get_Date() << endl;					// DEBUG
 		cout << "Subject: " << email->get_Subject() << endl;			// DEBUG
-		cout << "UID: " << email->get_UID() << endl;					// DEBUG
-		cout << "-------------------------------" << endl;				// DEBUG
+		//cout << "UID: " << email->get_UID() << endl;					// DEBUG
+		//cout << "-------------------------------" << endl;				// DEBUG
 		i=email->get_Body_From_Server(connection);
-		cout << "getbodyfromserver=" << i << endl;						// DEBUG
-		cout << "Have body? " << email->have_Body_Text() << endl;		// DEBUG
+		//cout << "getbodyfromserver=" << i << endl;						// DEBUG
+		//cout << "Have body? " << email->have_Body_Text() << endl;		// DEBUG
 		if (email->have_Body_Text() == 1)
 			cout << "BODY: " << email->get_Body_Text();					// DEBUG
 	} else
 		cout << "The message does not exist." << endl;
-	*/
+
 	/**
 	 * Logout
 	 * - Finalize the session

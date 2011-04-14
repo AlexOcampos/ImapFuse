@@ -133,6 +133,7 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		if (get_folders_list_from_server("", NULL) != SUCCESS) // get the folder_list
 			return -ENOENT;
 		f = search_folder(folder1); // I do path + 1, because the path is like /folder_name (ignore / in the search)
+		
 		if (f != NULL) {	// If folder exists
 			// The rigor entries
 			filler(buf, ".", NULL, 0);
@@ -142,32 +143,49 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			if (get_folders_list_from_server(path+1, f) != SUCCESS) // path+1 because the path is like /name
 				return -ENOENT;
 				
-			f = search_subfolder((char*)path);
+			f = search_subfolder((char*)path); // get the actual folder
 			
 			int num_subfolders = f->get_Num_subFolders();	// num of subfolders
 			if (num_subfolders > 0) {
 				int i;
+				Folder* tempfolder;
 				for (i=1;i<=num_subfolders;i++) {	// Insert in filler all the subfolder names
-					Folder *tempfolder = f->get_subFolder(i);
+					tempfolder = f->get_subFolder(i);
 					filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
 				}
 			}
 			
-			// Obtain emails (if exists)
-			filler(buf, "aqui mostraré los emails ", NULL, 0); // DEBUG
+			// Get emails (if exists)
+			/*string folderOpenStatus;
+			int numMessages;
+			int i;
+			char* path_folder = ((char*) f->get_Full_Folder_Name().c_str())+1;
+			if (SelectFolder(connection, path_folder, numMessages, folderOpenStatus) != UNKNOWN_MAILBOX) {
+				i = GetNewMail(connection, *f);
+				if (i>BEG_FAIL || i==LIST_FAILED || i== FOLDER_NOT_EXIST)
+					return -ENOENT;
+					
+				// Show all the messages
+				Message *email;
+				//for (i=1;i<=numMessages;i++) {
+				//	email = f->get_Message(i);
+				//	filler(buf, (char*) email->get_From_Address().c_str(), NULL, 0);
+				//}
+				
+				char* num = (char*) malloc(20);
+				sprintf(num, "%d", numMessages);
+				filler(buf, num, NULL, 0); // DEBUG
+				free(num);
+			} else
+				filler(buf, "UNKNOW MAILBOX ", NULL, 0); // DEBUG
+			*/
 			
 			free(temppath);
 			return 0;
-		} else {
-			// The rigor entries
-			filler(buf, ".", NULL, 0);
-			filler(buf, "..", NULL, 0);
-			
-			filler(buf, path, NULL, 0);
-			return 0;
-		}
+		} 
 		
-		//return -ENOENT;
+		return -ENOENT;
+		
 	} else {	// We are in folder root
 		if (get_folders_list_from_server("", NULL) == SUCCESS) {	// Obtain list of folders from folder root
 			// The rigor entries
@@ -278,6 +296,10 @@ Folder* search_subfolder(char* name) {
 	
 	strncpy(pathtemp, name, strlen(name)+1);	// make a copy of name
 	pch = strtok(pathtemp,"/");
+	if (pch == NULL) {
+		free(pathtemp);
+		return NULL;
+	}
 	
 	// Obtain parent folder
 	f = search_folder(pch);
@@ -289,10 +311,13 @@ Folder* search_subfolder(char* name) {
 	// Obtain subfolder
 	while (pch != NULL) {
 		pch = strtok(NULL, "/");
-		if (f == NULL)
+		if (f == NULL) {
+			free(pathtemp);
 			return NULL;
-		if (pch == NULL) 
+		}
+		if (pch == NULL) {
 			break;
+		}
 		f = search_subfolder_in_folder(pch, f);
 	}
 	
@@ -331,6 +356,7 @@ int get_folders_list_from_server(string path, Folder* folder) {
 	list<string> folder_names;
 	
 	if (folder == NULL) { // Create folder list in folder root
+		folder_names.clear();
 		return_code = getIMAPFolders(connection, folder_names, path);
 		if (return_code == SUCCESS) {
 			folder_list.clear();// empty folder_list

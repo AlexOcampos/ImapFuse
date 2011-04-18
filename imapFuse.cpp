@@ -136,9 +136,9 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		
 		if (f != NULL) {	// If folder exists
 			// The rigor entries
-			//filler(buf, ".", NULL, 0);
-			//filler(buf, "..", NULL, 0);
-			cout << "." << endl << ".." << endl;
+			filler(buf, ".", NULL, 0);
+			filler(buf, "..", NULL, 0);
+			//cout << "." << endl << ".." << endl;
 			
 			// Obtain subfolders (if exists)
 			if (get_folders_list_from_server(path+1, f) != SUCCESS) // path+1 because the path is like /name
@@ -152,8 +152,8 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				Folder* tempfolder;
 				for (i=1;i<=num_subfolders;i++) {	// Insert in filler all the subfolder names
 					tempfolder = f->get_subFolder(i);
-					//filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
-					cout << tempfolder->get_Folder_Name() << endl;
+					filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
+					//cout << tempfolder->get_Folder_Name() << endl;
 				}
 			}
 			
@@ -191,15 +191,15 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	} else {	// We are in folder root
 		if (get_folders_list_from_server("", NULL) == SUCCESS) {	// Obtain list of folders from folder root
 			// The rigor entries
-			//filler(buf, ".", NULL, 0);
-			//filler(buf, "..", NULL, 0);
-			cout << "." << endl << ".." << endl;
+			filler(buf, ".", NULL, 0);
+			filler(buf, "..", NULL, 0);
+			//cout << "." << endl << ".." << endl;
 			
 			// Obtain all the folders
 			list<Folder>::iterator itera = folder_list.begin();
 			while(itera != folder_list.end()) {
-				//filler(buf, ((*itera).get_Folder_Name()).c_str(), NULL, 0);
-				cout << (*itera).get_Folder_Name() << endl;
+				filler(buf, ((*itera).get_Folder_Name()).c_str(), NULL, 0);
+				//cout << (*itera).get_Folder_Name() << endl;
 				itera++;
 			}
 		} else {	// An error has been ocurred
@@ -368,15 +368,23 @@ int get_folders_list_from_server(string path, Folder* folder) {
 		}
 	} else { // create folder list in a specified folder
 		char* pathtemp = (char*) malloc(strlen((char*)path.c_str()) + 1);
-		char* pch;
-		char* path2 = (char*) malloc(strlen((char*)path.c_str()) + 1);
+		string pch;
+		string str;
+		string path2;
+		int posBar = 0;
+		bool salir = false;
 		
-		strncpy(pathtemp, (char*) path.c_str(), strlen((char*)path.c_str())+1); // makes a copy of path
+		str = path;
 		
-		pch = strtok(pathtemp,"/");	// gets the first folder name in the folder hierarchy
-		if (pch == NULL) 	// The name is NULL
-			return LIST_FAILED;
-		strncpy(path2,pch,strlen(pch)+1); // to get the actual path
+		posBar = str.find_first_of("/");
+		if (posBar == -1) {
+			pch = str;
+			str = "";
+		} else {
+			pch = str.substr(0,posBar);
+			str.erase (0,posBar+1);		
+		}
+		path2 = pch;
 		
 		// Obtain de folder root list
 		folder_names.clear();
@@ -387,21 +395,31 @@ int get_folders_list_from_server(string path, Folder* folder) {
 		folder_list.clear(); // empty folder_list
 		create_folder_list(folder_names, "");// obtain a new list
 		
-		Folder* f = search_folder(pch); // gets the first folder in the folder hierarchy
+		Folder* f = search_folder((char*)pch.c_str()); // gets the first folder in the folder hierarchy
 		
-		while ((pch != NULL) && (strcmp(pch, "0") != 0)) {
+		while (!salir) {
 			folder_names.clear();
 			return_code = getIMAPFolders(connection, folder_names, path2); // get subfolder names list
 			f->clear_subfolders();	// empty subfolder_list
 			create_folder_list_in_folder(folder_names, path2, f); // get a new list	
 			
-			pch = strtok(NULL, "/"); // obtain new folder name
-			if (pch == NULL)	// if there aren't any more, we've finished
-				break;
-			strcat(path2, "/");
-			strncat(path2, pch, strlen(pch)+1);	// Get the actual path
+			if (posBar == -1)
+				salir = true;
+				
+			// Replace strtok
+			posBar = str.find_first_of("/");
+			if (posBar == -1) {
+				pch = str;
+				str = "";
+			} else {
+				pch = str.substr(0,posBar);
+				str.erase (0,posBar+1);
+			}
 			
-			f = search_subfolder(path2); // Obtain the folder object with the name stored in pch.
+			path2.append("/");
+			path2.append(pch);
+			
+			f = search_subfolder((char*)path2.c_str()); // Obtain the folder object with the name stored in pch.
 			// (we pass the absolute path stored in "path2")
 		}
 		
@@ -481,7 +499,7 @@ int main(int argc, char *argv[]) {
 	Folder* f = search_folder((char*)"3x3");
 	get_folders_list_from_server("/3x3/Inscripciones", f);*/
 	
-	struct stat a;
+	/*struct stat a;
 	
 	cout << "READDIR SOBRE /" << endl;
 	ImapFuse_readdir("/", NULL, NULL, NULL, NULL) ;
@@ -533,7 +551,7 @@ int main(int argc, char *argv[]) {
 	
 	cout << "READDIR SOBRE /[Gmail]/Todos" << endl;
 	ImapFuse_readdir("/[Gmail]/Todos", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]/Todos", &a);
+	ImapFuse_getattr("/[Gmail]/Todos", &a);*/
 	
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

@@ -7,13 +7,12 @@
 
 #define FUSE_USE_VERSION 26
 
-#include    <iostream>
-#include    <stdlib.h>
-#include    <errno.h>
-#include    <unistd.h>
-#include    <sys/types.h>
-#include 	<list>
-
+#include <iostream>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <list>
 #include <fuse.h>
 #include <string.h>
 #include <errno.h>

@@ -35,14 +35,17 @@ static bool usessl;
 static list<Folder> folder_list;	// List of folders in folder root
 
 // Methods header
+Message* search_mail(char* path);
 Folder* search_folder(char * name);
 Folder* search_subfolder_in_folder(char* name, Folder* f);
 Folder* search_subfolder(char * name);
 int get_folders_list_from_server(string folder_root, Folder* folder);
+string trim_email(string mailstring);
+char *trimwhitespace(char *str);
 
 // FUSE methods
 /**
- * This metod obtain the attributes of a file.
+ * This function obtain the attributes of a file.
  * @param path The path of the file
  * @param stbuf The place where the stat structure with his attributes will be save
  * @return 0 on success
@@ -53,10 +56,6 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 	if (strcmp(path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
 		stbuf->st_nlink = 2;
-	} else if (strcmp(path, hello_path) == 0) {	// DEBUG
-		stbuf->st_mode = S_IFREG | 0444;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = strlen(hello_str);
 	} else if (search_folder(((char *)path)+1) != NULL) {	// If it is a dir in folder root
 		// I do path + 1, because the path is like /folder_name (ignore / in the search)
 		stbuf->st_mode = S_IFDIR | 0555;	// dr-xr-xr-x
@@ -74,35 +73,72 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_size = 0;
 		stbuf->st_blksize = 4096;
 		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
+	} else if (search_mail((char *) path) != NULL) {
+		stbuf->st_mode = S_IFDIR | 0555;	// dr-xr-xr-x
+		stbuf->st_nlink = 2;
+		stbuf->st_uid = getuid();
+		stbuf->st_gid = getgid();
+		stbuf->st_size = 0;
+		stbuf->st_blksize = 4096;
+		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
 	} else
 		res = -ENOENT;
 
 	return res;
 }
 
-static int ImapFuse_open(const char *path, struct fuse_file_info *fi)
-{
-	if (strcmp(path, hello_path) != 0)
+/**
+ * This function verify if a file (email) exists and if it has enough permissions
+ * @param path The path of the file
+ * @param fi Information about open files
+ * @return 0 on success. -ENOENT if the file doesn't exist or -EACCES if the file hasn't permissions
+ */
+static int ImapFuse_open(const char *path, struct fuse_file_info *fi) {
+	// Look for the email
+	if (search_mail((char *) path) == NULL)
 		return -ENOENT;
 
+	// Verify permissions
 	if ((fi->flags & 3) != O_RDONLY)
 		return -EACCES;
-
+		
 	return 0;
 }
 
-static int ImapFuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
-{
+/**
+ * This function read the content of a file (email)
+ * @param path The path of the file
+ * @param buf The buffer where the content of the email will be stored
+ * @param size The size of the email
+ * @param offset Position from which we must read
+ * @param fi Information about open files
+ * @return 0 on success. -ENOENT if the file doesn't exist or -EACCES if the file hasn't permissions
+ */
+static int ImapFuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 	size_t len;
 	(void) fi;
-	if(strcmp(path, hello_path) != 0)
+
+	Message* email;
+	string text;
+	 
+	// Look for the email
+	email = search_mail((char *) path);
+	if (email == NULL)
 		return -ENOENT;
 
-	len = strlen(hello_str);
+	// Get body of the email
+	email->get_Body_From_Server(connection);
+	if (email->have_Body_Text() != 1) // not body
+		return -ENOENT;
+
+	// Print email
+	text = email->get_Body_Text();
+	
+	len = text.length();
 	if (offset < len) {
 		if (offset + size > len)
 			size = len - offset;
-		memcpy(buf, hello_str + offset, size);
+		memcpy(buf, ((char*)text.c_str()) + offset, size);
 	} else
 		size = 0;
 
@@ -157,7 +193,7 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			}
 			
 			// Get emails (if exists)
-			/*string folderOpenStatus;
+			string folderOpenStatus;
 			int numMessages;
 			int i;
 			char* path_folder = ((char*) f->get_Full_Folder_Name().c_str())+1;
@@ -165,21 +201,46 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				i = GetNewMail(connection, *f);
 				if (i>BEG_FAIL || i==LIST_FAILED || i== FOLDER_NOT_EXIST)
 					return -ENOENT;
-					
+						
 				// Show all the messages
 				Message *email;
-				//for (i=1;i<=numMessages;i++) {
-				//	email = f->get_Message(i);
-				//	filler(buf, (char*) email->get_From_Address().c_str(), NULL, 0);
-				//}
+				string email_from;
+				string email_subject;
+				string email_uid;
+				string email_file;
+				for (i=1;i<=numMessages;i++) {
+					email = f->get_Message(i);
+
+					// Get from address
+					email_from = email->get_From_Address();
+					email_from = trim_email(email_from);
+
+					// Get subject
+					email_subject = email->get_Subject();
+					email_subject = trimwhitespace((char *)email_subject.c_str());
+
+					// Get uid
+					char* temp = (char*) malloc(4);
+					sprintf(temp, "%d", email->get_UID());
+					email_uid = temp;
+
+					email_file = "";
+					email_file.append(email_uid);
+					email_file.append("-");
+					email_file.append(email_subject);
+					email_file.append(" - ");
+					email_file.append(email_from);
+					
+					
+					filler(buf, (char*) email_file.c_str(), NULL, 0);
+					//cout << email_file << endl;
+					free(temp);
+				}
 				
-				char* num = (char*) malloc(20);
-				sprintf(num, "%d", numMessages);
-				filler(buf, num, NULL, 0); // DEBUG
-				free(num);
 			} else
-				filler(buf, "UNKNOW MAILBOX ", NULL, 0); // DEBUG
-			*/
+				cout << "UNKNOW MAILBOX" << endl;
+				//filler(buf, "UNKNOW MAILBOX ", NULL, 0); // DEBUG
+			
 			
 			free(temppath);
 			return 0;
@@ -271,6 +332,81 @@ void create_folder_list_in_folder( list<string> folder_names, string folder_root
 }
 
 /**
+ * Search for a email in a folder
+ * @param path The path of the email.
+ * @return The email object.
+ */
+Message* search_mail(char * path) {
+	Message* email;
+	Folder* f;
+
+	string temp_path;
+	int lastbar;
+	int numMessages;
+	string email_name;
+	string email_path;
+
+	char* temp = (char*) malloc(4);
+	string email_uid;
+	string email_from;
+	string email_subject;
+	string email_file;
+
+	temp_path = path;
+	lastbar = temp_path.find_last_of("/");
+	if (lastbar+1 == temp_path.length()) {	// if the last character of path is a '/'
+		temp_path = temp_path.substr(0,temp_path.length() -1);
+		lastbar = temp_path.find_last_of("/");
+	}
+	// Copy the name of the email
+	email_name = temp_path.substr(lastbar+1); 
+
+	// Copy the path to the email
+	if (temp_path[0] == '/')	// if the first character of path is a '/'
+		email_path = temp_path.substr(1,lastbar-1);	
+	else
+		email_path = temp_path.substr(0,lastbar);
+
+	// Now, we have the email path (in email_path) an the email name (in email_name)
+	// Look for the last folder in path
+	f = search_subfolder((char*) email_path.c_str());
+	if (f == NULL)
+		return NULL;
+
+	numMessages = f->get_Num_Messages();
+	// Look for email in the folder
+	for (int i=1;i<=numMessages;i++) {
+		email = f->get_Message(i);
+
+		// Get from address
+		email_from = email->get_From_Address();
+		email_from = trim_email(email_from);
+
+		// Get subject
+		email_subject = email->get_Subject();
+		email_subject = trimwhitespace((char*) email_subject.c_str());
+
+		// Get uid
+		sprintf(temp, "%d", email->get_UID());
+		email_uid = temp;
+
+		email_file = "";
+		email_file.append(email_uid);
+		email_file.append("-");
+		email_file.append(email_subject);
+		email_file.append(" - ");
+		email_file.append(email_from);
+		
+		if (email_name.compare(email_file) == 0) {
+			free(temp);
+			return email;
+		}
+	}
+	free(temp);
+	return NULL;
+}
+
+/**
  * Search for a folder in folder_list.
  * @param name Name of folder.
  * @return The folder object.
@@ -345,6 +481,53 @@ Folder* search_subfolder_in_folder(char* name, Folder* f) {
 			return folder_temp;
 	}
 	return NULL;
+}
+
+/**
+ * Only trim the email of a string. The email must be among < and >.
+ * @param mailstring The string with the email.
+ * @return Only the email.
+ */
+string trim_email(string mailstring) {
+	string email;
+	size_t posini, posfin;
+
+	posini = mailstring.find_last_of("<");
+	posfin = mailstring.find_last_of(">");
+
+	if ((posfin <= posini) || (posini == string::npos) || (posfin == string::npos))
+		email = mailstring;
+	else
+		email = mailstring.substr(posini+1, (posfin-posini)-1);
+		
+	if (email.find("@") == string::npos)
+		email = mailstring;
+		
+	return email;
+}
+
+/**
+ * Trim white spaces
+ * @param str The string
+ * @return The string without whitespaces.
+ */
+char *trimwhitespace(char *str) {
+  char *end;
+
+  // Trim leading space
+  while(isspace(*str)) str++;
+
+  if(*str == 0)  // All spaces?
+    return str;
+
+  // Trim trailing space
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+
+  // Write new null terminator
+  *(end+1) = 0;
+
+  return str;
 }
 
 // Imap Methods
@@ -461,7 +644,10 @@ int main(int argc, char *argv[]) {
 	dispatcher->set_open	(&ImapFuse_open);
 	dispatcher->set_read	(&ImapFuse_read);
 	
-	login();
+	if (login() == -1) {
+		cout << endl << "** Login failed!" << endl;
+		return -1;
+	}
 	
 	/*Folder *folder = new Folder("[Gmail]");
 	get_folders_list_from_server("[Gmail]", folder);
@@ -500,11 +686,11 @@ int main(int argc, char *argv[]) {
 	
 	/*struct stat a;
 	
-	cout << "READDIR SOBRE /" << endl;
-	ImapFuse_readdir("/", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/", &a);
+	cout << "READDIR SOBRE /GC" << endl;
+	ImapFuse_readdir("/GC", NULL, NULL, NULL, NULL) ;
+	ImapFuse_getattr("/GC/Defensa GC - alexocamposveiga@gmail.com", &a);*/
 	
-	cout << "READDIR SOBRE /3x3" << endl;
+	/*cout << "READDIR SOBRE /3x3" << endl;
 	ImapFuse_readdir("/3x3", NULL, NULL, NULL, NULL) ;
 	ImapFuse_getattr("/3x3", &a);
 	
@@ -551,6 +737,10 @@ int main(int argc, char *argv[]) {
 	cout << "READDIR SOBRE /[Gmail]/Todos" << endl;
 	ImapFuse_readdir("/[Gmail]/Todos", NULL, NULL, NULL, NULL) ;
 	ImapFuse_getattr("/[Gmail]/Todos", &a);*/
-	
+
+	/*struct stat a;
+	ImapFuse_readdir("/Personal", NULL, NULL, NULL, NULL) ;
+	ImapFuse_getattr((char*)"/Personal/asdf - talia.brana@gmail.com (43).html", &a);*/
+	//search_mail((char*)"/Personal/asdf - talia.brana@gmail.com (43).html") ;
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

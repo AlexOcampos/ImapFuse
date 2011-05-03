@@ -96,14 +96,16 @@ int main( int argc, char *argv[] ) {
     
     // DEBUG - Show folder_list
     list<Folder>::iterator itera = folder_list.begin();
-    /*while(itera != folder_list.end()) {
-		cout << "folder: " << (*itera).get_Folder_Name() << endl;
-		cout << "     -> full_name= " << (*itera).get_Full_Folder_Name() << endl;
-		cout << " -> seq_start= " << (*itera).get_Sequence_Start() << endl;
-		cout << " -> seq_stop = " << (*itera).get_Sequence_Stop() << endl;
-		cout << " -> num_mess = " << (*itera).get_Num_Messages() << endl;
+    while(itera != folder_list.end()) {
+		//cout << "folder: " << (*itera).get_Folder_Name() << endl;
+		//cout << "     -> full_name= " << (*itera).get_Full_Folder_Name() << endl;
+		//cout << " -> seq_start= " << (*itera).get_Sequence_Start() << endl;
+		//cout << " -> seq_stop = " << (*itera).get_Sequence_Stop() << endl;
+		//cout << " -> num_mess = " << (*itera).get_Num_Messages() << endl;
+		if (strcmp("INBOX", (char*) (*itera).get_Folder_Name().c_str()) == 0)
+			break;
 		itera++;
-	}*/
+	}
 
 	/**
 	 * Select a folder
@@ -111,11 +113,11 @@ int main( int argc, char *argv[] ) {
 	 */
 	string folderOpenStatus;
 	int numMessages;
-	itera = folder_list.begin();
+	//itera = folder_list.begin();
 	cout << endl << "********** SelectFolders **********" << endl;		// DEBUG
 	cout << "Folder name: " << (*itera).get_Folder_Name() << endl;		// DEBUG
 	cout << "Full folder name: " << (*itera).get_Full_Folder_Name() << endl;// DEBUG
-	i = SelectFolder(connection, "3x3", numMessages, folderOpenStatus);
+	i = SelectFolder(connection, (*itera).get_Folder_Name(), numMessages, folderOpenStatus);
 	if (i == UNKNOWN_MAILBOX)
 		printf("Unknown mailbox - %d\n",i);
 	cout << "numMessages = " << numMessages << " |folderOpenStatus = " << folderOpenStatus << endl;// DEBUG
@@ -133,7 +135,7 @@ int main( int argc, char *argv[] ) {
 		return -1;
 	}
 	
-	int Message_id = 1;		// Message identifier
+	int Message_id = 2;		// Message identifier
 	Message *email = (*itera).get_Message(Message_id);		// Para obtener cuerpo de un email a partir de su uid,
 															// primero necesitamos coger uno de la lista (orden por id)
 	if (email != NULL) {
@@ -163,4 +165,3 @@ int main( int argc, char *argv[] ) {
     
 	return 0;
 }
-

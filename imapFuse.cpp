@@ -540,9 +540,14 @@ char *trimwhitespace(char *str) {
 int get_folders_list_from_server(string path, Folder* folder) {
 	int return_code;
 	list<string> folder_names;
+	int numMessages;
+	string folderOpenStatus;
 	
 	if (folder == NULL) { // Create folder list in folder root
 		folder_names.clear();
+		if ((return_code = SelectFolder(connection, "", numMessages, folderOpenStatus)) != UNKNOWN_MAILBOX) {
+			return return_code;
+		}
 		return_code = getIMAPFolders(connection, folder_names, path);
 		if (return_code == SUCCESS) {
 			folder_list.clear();// empty folder_list

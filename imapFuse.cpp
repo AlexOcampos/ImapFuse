@@ -173,7 +173,6 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			// The rigor entries
 			filler(buf, ".", NULL, 0);
 			filler(buf, "..", NULL, 0);
-			//cout << "." << endl << ".." << endl;
 			
 			// Obtain subfolders (if exists)
 			if (get_folders_list_from_server(path+1, f) != SUCCESS) // path+1 because the path is like /name
@@ -188,7 +187,6 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 				for (i=1;i<=num_subfolders;i++) {	// Insert in filler all the subfolder names
 					tempfolder = f->get_subFolder(i);
 					filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
-					//cout << tempfolder->get_Folder_Name() << endl;
 				}
 			}
 			
@@ -233,13 +231,11 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 					
 					
 					filler(buf, (char*) email_file.c_str(), NULL, 0);
-					//cout << email_file << endl;
 					free(temp);
 				}
 				
 			} else
 				cout << "UNKNOW MAILBOX" << endl;
-				//filler(buf, "UNKNOW MAILBOX ", NULL, 0); // DEBUG
 			
 			
 			free(temppath);
@@ -328,6 +324,18 @@ void create_folder_list_in_folder( list<string> folder_names, string folder_root
 		}
 		it++;
 	}
+	return;
+}
+
+void mount_options(int argc, char *argv[], char* option, char** result){
+	*result = NULL;
+	for (int i = 0; i<argc; i++) {
+		if (strcmp(argv[i], option) == 0) {
+			*result = argv[i+1];
+			break;
+		}
+	}
+
 	return;
 }
 
@@ -618,11 +626,11 @@ int get_folders_list_from_server(string path, Folder* folder) {
  * Connect with server and login
  * @return 0 on success or -1 on failure
  */
-int login(void) {
+int login(char* user, char* pass) {
 	imap_server 	= "imap.gmail.com";					// Nombre servidor IMAP
 	port_n			= 993;								// 143 || 993 con encriptación SSL
-	cout << "Write your username: "; cin >> user;		// Usuario
-	cout << "Write your pass: "; cin >> pass;			// Password
+	//~ cout << "Write your username: "; cin >> user;		// Usuario
+	//~ cout << "Write your pass: "; cin >> pass;			// Password
 	usessl			= true;
 	
 	int i = IMAPLogin(connection, imap_server, port_n, user, pass, usessl);
@@ -642,6 +650,9 @@ int login(void) {
  */
 int main(int argc, char *argv[]) {
 	FuseDispatcher *dispatcher;
+	char* username;
+	char* password;
+	
 	dispatcher = new FuseDispatcher();
 	
 	dispatcher->set_getattr	(&ImapFuse_getattr);
@@ -649,7 +660,15 @@ int main(int argc, char *argv[]) {
 	dispatcher->set_open	(&ImapFuse_open);
 	dispatcher->set_read	(&ImapFuse_read);
 	
-	if (login() == -1) {
+	// Mount options
+	mount_options(argc, argv, (char*)"-u", &username);	// Get the username
+	mount_options(argc, argv, (char*)"-w", &password);	// Get the password
+	if (username == NULL || password == NULL)  {
+		cout << endl << "** -u and -w options are required!" << endl;
+		return -1;
+	}
+	
+	if (login(username, password) == -1) {
 		cout << endl << "** Login failed!" << endl;
 		return -1;
 	}
@@ -747,5 +766,6 @@ int main(int argc, char *argv[]) {
 	ImapFuse_readdir("/Personal", NULL, NULL, NULL, NULL) ;
 	ImapFuse_getattr((char*)"/Personal/asdf - talia.brana@gmail.com (43).html", &a);*/
 	//search_mail((char*)"/Personal/asdf - talia.brana@gmail.com (43).html") ;
+	
 	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
 }

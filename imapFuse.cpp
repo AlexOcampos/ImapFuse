@@ -290,6 +290,28 @@ void add_Folder_in_folder(Folder F, string folder_root, Folder* folder) {
 }
 
 /**
+ * Copy the valid options for fuse_main in dest.
+ * @param argc the size of argv[]
+ * @param argv a vector which contains all the mount options
+ * @param dest a vector which the valid options will be copied
+ * @return number of options copied
+ */
+int copy_options(int argc, char* argv[], char* dest[]) {
+	int i=0, j=0;
+	
+	while (i < argc) {
+		if (strcmp(argv[i], "-u")==0 || strcmp(argv[i], "-w")==0) {
+			i+=2;
+			continue;
+		}
+		dest[j] = argv[i];
+		i++;
+		j++;
+	}
+	return j;
+}	
+
+/**
  * Convert a list of folder names in a list of Folder objects
  * @param folder_names A list<strings> with the folder names
  * @param folder_root name of folder root
@@ -327,6 +349,13 @@ void create_folder_list_in_folder( list<string> folder_names, string folder_root
 	return;
 }
 
+/**
+ * Gets the mount option specified in option.
+ * @param argc the size of argv[]
+ * @param argv a vector which contains all the mount options
+ * @param option the option which is looking for
+ * @param result the result of the searching
+ */
 void mount_options(int argc, char *argv[], char* option, char** result){
 	*result = NULL;
 	for (int i = 0; i<argc; i++) {
@@ -652,6 +681,8 @@ int main(int argc, char *argv[]) {
 	FuseDispatcher *dispatcher;
 	char* username;
 	char* password;
+	int nOptions;
+	char* dest[50];
 	
 	dispatcher = new FuseDispatcher();
 	
@@ -667,6 +698,10 @@ int main(int argc, char *argv[]) {
 		cout << endl << "** -u and -w options are required!" << endl;
 		return -1;
 	}
+		
+	// Copy mount options
+	nOptions = copy_options(argc, argv, dest);
+	
 	
 	if (login(username, password) == -1) {
 		cout << endl << "** Login failed!" << endl;
@@ -767,5 +802,5 @@ int main(int argc, char *argv[]) {
 	ImapFuse_getattr((char*)"/Personal/asdf - talia.brana@gmail.com (43).html", &a);*/
 	//search_mail((char*)"/Personal/asdf - talia.brana@gmail.com (43).html") ;
 	
-	return fuse_main(argc, argv, (dispatcher->get_fuseOps()), NULL);
+	return fuse_main(nOptions, dest, (dispatcher->get_fuseOps()), NULL);
 }

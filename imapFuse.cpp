@@ -167,7 +167,7 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		
 		if (get_folders_list_from_server("", NULL) != SUCCESS) // get the folder_list
 			return -ENOENT;
-		f = search_folder(folder1); // I do path + 1, because the path is like /folder_name (ignore / in the search)
+		f = search_folder(folder1);
 		
 		if (f != NULL) {	// If folder exists
 			// The rigor entries

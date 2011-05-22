@@ -428,7 +428,7 @@ string pathEmail(char* path) {
 	else
 		email_path = temp_path.substr(0,lastbar);
 		
-	if ((name.compare("header") == 0) || (name.compare("body") == 0))
+	if (((name.compare("header") == 0) || (name.compare("body") == 0)) && (search_mail((char*)email_path.c_str()) != NULL))
 		return email_path;
 	else
 		return "";

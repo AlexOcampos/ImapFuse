@@ -81,7 +81,7 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_size = 0;
 		stbuf->st_blksize = 4096;
 		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
-	} else
+	}  else
 		res = -ENOENT;
 
 	return res;
@@ -165,8 +165,10 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		strncpy(temppath,path,strlen(path)+1);	// get a copy of path, because strtok modifies the string
 		folder1 = strtok(temppath, "/");	// get the first folder name of the path
 		
-		if (get_folders_list_from_server("", NULL) != SUCCESS) // get the folder_list
+		if (get_folders_list_from_server("", NULL) != SUCCESS) { // get the folder_list
+			free(temppath);
 			return -ENOENT;
+		}
 		f = search_folder(folder1);
 		
 		if (f != NULL) {	// If folder exists
@@ -175,68 +177,94 @@ static int ImapFuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			filler(buf, "..", NULL, 0);
 			
 			// Obtain subfolders (if exists)
-			if (get_folders_list_from_server(path+1, f) != SUCCESS) // path+1 because the path is like /name
-				return -ENOENT;
-				
-			f = search_subfolder((char*)path); // get the actual folder
+			if (get_folders_list_from_server(path+1, f) != SUCCESS) { // path+1 because the path is like /name
 			
-			int num_subfolders = f->get_Num_subFolders();	// num of subfolders
-			if (num_subfolders > 0) {
+				// path could be a email. In this case, I have to cut the path to the email, 
+				// check it and check if it's really a email
+				string temp_path = path;
+				int lastbar = temp_path.find_last_of("/");
+				if (lastbar+1 == temp_path.length()) {	// if the last character of path is a '/'
+					temp_path = temp_path.substr(0,temp_path.length() -1);
+					lastbar = temp_path.find_last_of("/");
+				}
+				if (temp_path[0] == '/')	// if the first character of path is a '/'
+					temp_path = temp_path.substr(1,lastbar-1);	
+				else
+					temp_path = temp_path.substr(0,lastbar);
+					
+				// Check if is a correct path and a correct email. In affirmative case fill with "header" and "body"
+				if (get_folders_list_from_server(temp_path, f) != SUCCESS) {
+					free(temppath);
+					return -ENOENT; // The path doesn't exist
+				} else {
+					if (search_mail((char*)path) != NULL) {
+						filler(buf, "header", NULL, 0);
+						filler(buf, "body", NULL, 0);
+					} else {
+						free(temppath);
+						return -ENOENT; // It isn't an email
+					}
+				}
+				
+			} else {
+				f = search_subfolder((char*)path); // get the actual folder
+				
+				int num_subfolders = f->get_Num_subFolders();	// num of subfolders
+				if (num_subfolders > 0) {
+					int i;
+					Folder* tempfolder;
+					for (i=1;i<=num_subfolders;i++) {	// Insert in filler all the subfolder names
+						tempfolder = f->get_subFolder(i);
+						filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
+					}
+				}
+				
+				// Get emails (if exists)
+				string folderOpenStatus;
+				int numMessages;
 				int i;
-				Folder* tempfolder;
-				for (i=1;i<=num_subfolders;i++) {	// Insert in filler all the subfolder names
-					tempfolder = f->get_subFolder(i);
-					filler(buf, tempfolder->get_Folder_Name().c_str(), NULL, 0);
-				}
-			}
-			
-			// Get emails (if exists)
-			string folderOpenStatus;
-			int numMessages;
-			int i;
-			char* path_folder = ((char*) f->get_Full_Folder_Name().c_str())+1;
-			if (SelectFolder(connection, path_folder, numMessages, folderOpenStatus) != UNKNOWN_MAILBOX) {
-				i = GetNewMail(connection, *f);
-				if (i>BEG_FAIL || i==LIST_FAILED || i== FOLDER_NOT_EXIST)
-					return -ENOENT;
+				char* path_folder = ((char*) f->get_Full_Folder_Name().c_str())+1;
+				if (SelectFolder(connection, path_folder, numMessages, folderOpenStatus) != UNKNOWN_MAILBOX) {
+					i = GetNewMail(connection, *f);
+					if (i>BEG_FAIL || i==LIST_FAILED || i== FOLDER_NOT_EXIST)
+						return -ENOENT;
+							
+					// Show all the messages
+					Message *email;
+					string email_from;
+					string email_subject;
+					string email_uid;
+					string email_file;
+					for (i=1;i<=numMessages;i++) {
+						email = f->get_Message(i);
+
+						// Get from address
+						email_from = email->get_From_Address();
+						email_from = trim_email(email_from);
+
+						// Get subject
+						email_subject = email->get_Subject();
+						email_subject = trimwhitespace((char *)email_subject.c_str());
+
+						// Get uid
+						char* temp = (char*) malloc(4);
+						sprintf(temp, "%d", email->get_UID());
+						email_uid = temp;
+
+						email_file = "";
+						email_file.append(email_uid);
+						email_file.append("-");
+						email_file.append(email_subject);
+						email_file.append(" - ");
+						email_file.append(email_from);
 						
-				// Show all the messages
-				Message *email;
-				string email_from;
-				string email_subject;
-				string email_uid;
-				string email_file;
-				for (i=1;i<=numMessages;i++) {
-					email = f->get_Message(i);
-
-					// Get from address
-					email_from = email->get_From_Address();
-					email_from = trim_email(email_from);
-
-					// Get subject
-					email_subject = email->get_Subject();
-					email_subject = trimwhitespace((char *)email_subject.c_str());
-
-					// Get uid
-					char* temp = (char*) malloc(4);
-					sprintf(temp, "%d", email->get_UID());
-					email_uid = temp;
-
-					email_file = "";
-					email_file.append(email_uid);
-					email_file.append("-");
-					email_file.append(email_subject);
-					email_file.append(" - ");
-					email_file.append(email_from);
-					
-					
-					filler(buf, (char*) email_file.c_str(), NULL, 0);
-					free(temp);
-				}
-				
-			} else
-				cout << "UNKNOW MAILBOX" << endl;
-			
+						
+						filler(buf, (char*) email_file.c_str(), NULL, 0);
+						free(temp);
+					}
+				} else
+					cout << "UNKNOW MAILBOX" << endl;
+			}
 			
 			free(temppath);
 			return 0;
@@ -380,6 +408,8 @@ Message* search_mail(char * path) {
 	string temp_path;
 	int lastbar;
 	int numMessages;
+	int i;
+	string folderOpenStatus;
 	string email_name;
 	string email_path;
 
@@ -410,9 +440,18 @@ Message* search_mail(char * path) {
 	if (f == NULL)
 		return NULL;
 
-	numMessages = f->get_Num_Messages();
+	if (SelectFolder(connection, (char*) email_path.c_str(), numMessages, folderOpenStatus) == UNKNOWN_MAILBOX) {
+		free(temp);
+		return NULL;
+	}
+	i = GetNewMail(connection, *f);
+	if (i>BEG_FAIL || i==LIST_FAILED || i== FOLDER_NOT_EXIST) {
+		free(temp);
+		return NULL;
+	}
+	
 	// Look for email in the folder
-	for (int i=1;i<=numMessages;i++) {
+	for (i=1;i<=numMessages;i++) {
 		email = f->get_Message(i);
 
 		// Get from address
@@ -645,6 +684,10 @@ int get_folders_list_from_server(string path, Folder* folder) {
 			
 			f = search_subfolder((char*)path2.c_str()); // Obtain the folder object with the name stored in pch.
 			// (we pass the absolute path stored in "path2")
+			if (f == NULL) {
+				salir = true;
+				return_code = -1;
+			}	
 		}
 		
 	}

@@ -35,6 +35,7 @@ static bool usessl;
 static list<Folder> folder_list;	// List of folders in folder root
 
 // Methods header
+string pathEmail(char* path);
 Message* search_mail(char* path);
 Folder* search_folder(char * name);
 Folder* search_subfolder_in_folder(char* name, Folder* f);
@@ -81,7 +82,12 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_size = 0;
 		stbuf->st_blksize = 4096;
 		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
-	}  else
+	} else if (pathEmail((char*) path) != "") {
+		stbuf->st_mode = S_IFREG | 0555;	// dr-xr-xr-x
+		stbuf->st_nlink = 1;
+		stbuf->st_uid = getuid();
+		stbuf->st_gid = getgid();
+	} else
 		res = -ENOENT;
 
 	return res;
@@ -394,6 +400,38 @@ void mount_options(int argc, char *argv[], char* option, char** result){
 	}
 
 	return;
+}
+
+/**
+ * Check if the path is the header or body file of an email
+ * @param path The path which must be checked
+ * @return The path without "header" or "body", or "" if it isn't an email file
+ */
+string pathEmail(char* path) {
+	string temp_path = path;
+	string name;
+	string email_path;
+	int lastbar;
+	
+	lastbar = temp_path.find_last_of("/");
+	if (lastbar+1 == temp_path.length()) {	// if the last character of path is a '/'
+		temp_path = temp_path.substr(0,temp_path.length() -1);
+		lastbar = temp_path.find_last_of("/");
+	}
+	
+	// Copy the name of the email
+	name = temp_path.substr(lastbar+1); 
+
+	// Copy the path to the email
+	if (temp_path[0] == '/')	// if the first character of path is a '/'
+		email_path = temp_path.substr(1,lastbar-1);	
+	else
+		email_path = temp_path.substr(0,lastbar);
+		
+	if ((name.compare("header") == 0) || (name.compare("body") == 0))
+		return email_path;
+	else
+		return "";
 }
 
 /**

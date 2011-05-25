@@ -35,6 +35,7 @@ static bool usessl;
 static list<Folder> folder_list;	// List of folders in folder root
 
 // Methods header
+string build_header(Message* email);
 string pathEmail(char* path);
 Message* search_mail(char* path);
 Folder* search_folder(char * name);
@@ -53,6 +54,8 @@ char *trimwhitespace(char *str);
  */
 static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 	int res = 0;
+	string file;
+	
 	memset(stbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
 		stbuf->st_mode = S_IFDIR | 0755;
@@ -82,11 +85,30 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_size = 0;
 		stbuf->st_blksize = 4096;
 		stbuf->st_blocks = stbuf->st_size/stbuf->st_blksize+((stbuf->st_size%stbuf->st_blksize)? 1:0);
-	} else if (pathEmail((char*) path) != "") {
-		stbuf->st_mode = S_IFREG | 0555;	// dr-xr-xr-x
+	} else if ((file=pathEmail((char*) path)) != "") {
+		string text;
+		Message* email;
+		int len;
+		
+		// To obtain the size of the file
+		email = search_mail((char *) file.c_str());
+		text = path;
+		if (text.find("body")!=string::npos) { // We must know the size of body file
+			email->get_Body_From_Server(connection);
+			text = email->get_Body_Text();		
+			len = text.length();
+		} else if (text.find("header")!=string::npos) { // We must know the size of header file
+			text = build_header(email);
+			len = text.length();
+		} else // I don't know the file
+			len = 0;
+		
+		// Stablish attributes
+		stbuf->st_mode = S_IFREG | 0444;	// -r--r--r--
 		stbuf->st_nlink = 1;
 		stbuf->st_uid = getuid();
 		stbuf->st_gid = getgid();
+		stbuf->st_size = len;
 	} else
 		res = -ENOENT;
 
@@ -100,8 +122,10 @@ static int ImapFuse_getattr(const char *path, struct stat *stbuf) {
  * @return 0 on success. -ENOENT if the file doesn't exist or -EACCES if the file hasn't permissions
  */
 static int ImapFuse_open(const char *path, struct fuse_file_info *fi) {
+	string file = pathEmail((char*)path);
+	
 	// Look for the email
-	if (search_mail((char *) path) == NULL)
+	if (file == "")
 		return -ENOENT;
 
 	// Verify permissions
@@ -126,28 +150,40 @@ static int ImapFuse_read(const char *path, char *buf, size_t size, off_t offset,
 
 	Message* email;
 	string text;
-	 
+	string path2 = path;
+	string file = pathEmail((char*)path); // get the path of the email
+	
 	// Look for the email
-	email = search_mail((char *) path);
+	email = search_mail((char *) file.c_str());
 	if (email == NULL)
 		return -ENOENT;
 
-	// Get body of the email
-	email->get_Body_From_Server(connection);
-	if (email->have_Body_Text() != 1) // not body
-		return -ENOENT;
+	if (path2.find("body")!=string::npos) {
+		// Get body of the email
+		if (email->have_Body_Text() != 1) // not body
+			return -ENOENT;
 
-	// Print email
-	text = email->get_Body_Text();
-	
-	len = text.length();
-	if (offset < len) {
-		if (offset + size > len)
-			size = len - offset;
-		memcpy(buf, ((char*)text.c_str()) + offset, size);
-	} else
-		size = 0;
-
+		// Print email
+		text = email->get_Body_Text();
+		
+		len = text.length();
+		if (offset < len) {
+			if (offset + size > len)
+				size = len - offset;
+			memcpy(buf, ((char*)text.c_str()) + offset, size);
+		} else
+			size = 0;
+	}
+	if (path2.find("header")!=string::npos) {
+		text = build_header(email);
+		len = text.length();
+		if (offset < len) {
+			if (offset + size > len)
+				size = len - offset;
+			memcpy(buf, ((char*)text.c_str()) + offset, size);
+		} else
+			size = 0;
+	}
 	return size;
 }
 
@@ -321,6 +357,17 @@ void add_Folder_in_folder(Folder F, string folder_root, Folder* folder) {
     F.set_Full_Folder_Name( folder_root + "/" + F.get_Folder_Name() );
     folder->add_subFolder(F); 
     return;
+}
+
+/**
+ * Get the header of the email passed
+ * @param email The message object
+ * @return The header of the email
+ */ 
+string build_header(Message* email) {
+	string text;
+	text = email->get_Header();
+	return text;
 }
 
 /**

@@ -11,4 +11,10 @@
 *   Resources: Fuse library (http://fuse.sourceforge.net/) for the filesystem, Althea project      *
 *	(http://althea.sourceforge.net/) for the Imap library, and fusecpp.h (www.circlesoft.com). *
 *												   *
+*   Mount options: -u for username, -w for pasword						   *
+*	Example: ./imapFuse /media/fuse -u username -w pass					   *
+*												   *
+*   Note: in this moment, it only works with gmail accounts. In order to change the server, it	   *
+*	must be modified in imapFuse.cpp and recompile the program.				   *
+*												   *
 ****************************************************************************************************

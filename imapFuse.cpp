@@ -827,108 +827,14 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 		
-	// Copy mount options
+	// Copy valid mount options
 	nOptions = copy_options(argc, argv, dest);
 	
-	
+	// Make log in
 	if (login(username, password) == -1) {
 		cout << endl << "** Login failed!" << endl;
 		return -1;
 	}
-	
-	/*Folder *folder = new Folder("[Gmail]");
-	get_folders_list_from_server("[Gmail]", folder);
-	cout << "FOLDER LIST SUBFOLDER: " << folder->get_Num_subFolders() << endl;*/
-	
-	/*get_folders_list_from_server("", NULL);
-	Folder* f;
-	f = search_folder((char *)"[Gmail]");
-	if (f == NULL) 
-		cout << "es nulo" << endl;
-	get_folders_list_from_server("[Gmail]", f);
-	if (search_subfolder((char *)"/[Gmail]/Borradores") == NULL)
-		cout << "null" << endl;
-	else
-		cout << "no null" << endl;*/
-	
-	/*char* folder1;
-	char* path = (char*) "/3x3/inscripciones/2011";
-	char* temppath = (char*) malloc(strlen(path)+1);
-	strncpy(temppath,path,strlen(path)+1);
-	cout << path << endl;
-	cout << temppath << endl;
-	folder1 = strtok(temppath, "/");
-	cout << "f1: " << folder1<<endl;
-	while (folder1 != NULL) {
-		folder1 = strtok(NULL, "/\n");
-		if (folder1 == NULL)
-			continue;
-		cout << "f1: " << folder1 << endl;
-	}
-	free(temppath);*/
-	
-	/*get_folders_list_from_server("", NULL);
-	Folder* f = search_folder((char*)"3x3");
-	get_folders_list_from_server("/3x3/Inscripciones", f);*/
-	
-	/*struct stat a;
-	
-	cout << "READDIR SOBRE /GC" << endl;
-	ImapFuse_readdir("/GC", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/GC/Defensa GC - alexocamposveiga@gmail.com", &a);*/
-	
-	/*cout << "READDIR SOBRE /3x3" << endl;
-	ImapFuse_readdir("/3x3", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/3x3", &a);
-	
-	cout << "READDIR SOBRE /Inscripciones" << endl;
-	ImapFuse_readdir("/3x3/Inscripciones", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/3x3/Inscripciones", &a);
-	
-	cout << "READDIR SOBRE /3x3" << endl;
-	ImapFuse_readdir("/3x3", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/3x3", &a);
-	
-	cout << "READDIR SOBRE /Documentos" << endl;
-	ImapFuse_readdir("/3x3/Documentos", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/3x3/Documentos", &a);
-	
-	cout << "READDIR SOBRE /3x3" << endl;
-	ImapFuse_readdir("/3x3", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/3x3", &a);
-	
-	cout << "READDIR SOBRE /" << endl;
-	ImapFuse_readdir("/", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/", &a);
-	
-	cout << "READDIR SOBRE /[Gmail]" << endl;
-	ImapFuse_readdir("/[Gmail]", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]", &a);
-	
-	cout << "READDIR SOBRE /[Gmail]/Borradores" << endl;
-	ImapFuse_readdir("/[Gmail]/Borradores", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]/Borradores", &a);
-	
-	cout << "READDIR SOBRE /[Gmail]" << endl;
-	ImapFuse_readdir("/[Gmail]", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]", &a);
-	
-	cout << "READDIR SOBRE /Enviados" << endl;
-	ImapFuse_readdir("/[Gmail]/Enviados", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]/Enviados", &a);
-	
-	cout << "READDIR SOBRE /[Gmail]" << endl;
-	ImapFuse_readdir("/[Gmail]", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]", &a);
-	
-	cout << "READDIR SOBRE /[Gmail]/Todos" << endl;
-	ImapFuse_readdir("/[Gmail]/Todos", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr("/[Gmail]/Todos", &a);*/
-
-	/*struct stat a;
-	ImapFuse_readdir("/Personal", NULL, NULL, NULL, NULL) ;
-	ImapFuse_getattr((char*)"/Personal/asdf - talia.brana@gmail.com (43).html", &a);*/
-	//search_mail((char*)"/Personal/asdf - talia.brana@gmail.com (43).html") ;
 	
 	return fuse_main(nOptions, dest, (dispatcher->get_fuseOps()), NULL);
 }

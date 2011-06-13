@@ -431,6 +431,28 @@ void create_folder_list_in_folder( list<string> folder_names, string folder_root
 }
 
 /**
+ * If it has the -h option, the help will show
+ * @param argc the size of argv[]
+ * @param argv a vector which contains all the mount options
+ * @return 0 if there isn't -h option.
+ */
+int help_option(int argc, char *argv[]) {
+	for (int i = 0; i<argc; i++) {
+		if (strcmp(argv[i], "-h") == 0) {
+			cout << "Instruction manual: ./imapFuse PATH -u username -w password [-s server] [-p port] [-l true/false]" << endl;
+			cout << "Mount options:" << endl;
+			cout << "      -u username   : The user name of the email account" << endl;
+			cout << "      -w pasword    : The password of the email account" << endl;
+			cout << "      -s server     : The name of the email server. By default it uses imap.gmail.com" << endl;
+			cout << "      -p port       : The number of the port. By default it uses 993" << endl;
+			cout << "      -l true/false : Use ssl encription. By default it uses true" << endl;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
  * Gets the mount option specified in option.
  * @param argc the size of argv[]
  * @param argv a vector which contains all the mount options
@@ -783,12 +805,33 @@ int get_folders_list_from_server(string path, Folder* folder) {
  * Connect with server and login
  * @return 0 on success or -1 on failure
  */
-int login(char* user, char* pass) {
-	imap_server 	= "imap.gmail.com";					// Nombre servidor IMAP
-	port_n			= 993;								// 143 || 993 con encriptación SSL
-	//~ cout << "Write your username: "; cin >> user;		// Usuario
-	//~ cout << "Write your pass: "; cin >> pass;			// Password
-	usessl			= true;
+int login(char* user, char* pass, char* server, char* port, char* ssl) {
+	if (server != NULL)
+		imap_server = server;
+	else
+		imap_server 	= "imap.gmail.com";					// Nombre servidor IMAP
+	
+	if (port != NULL)
+		port_n = atoi(port);
+	else
+		port_n			= 993;								// 143 || 993 con encriptación SSL
+	
+	if (ssl != NULL) {
+		int i = 0;
+		while (ssl[i] != '\0') {
+			cout << ssl[i] << " - ";
+			ssl[i] = tolower(ssl[i]);
+			cout << ssl[i] << endl;
+			i++;
+		}
+		
+		if (strcmp(ssl, (char*)"true") == 0) {
+			usessl = true;
+		} else {
+			usessl = false;
+		}
+	} else
+		usessl			= true;
 	
 	int i = IMAPLogin(connection, imap_server, port_n, user, pass, usessl);
 	if (i == BAD_LOGIN) {
@@ -796,7 +839,7 @@ int login(char* user, char* pass) {
 		return -1;
 	}
 	if (i == SERVER_NOT_READY_FOR_CONNECTION) {
-		printf("Server not ready for connection: %d\n", i);
+		printf("Server not ready for connection\n");
 		return -1;
 	}
 	return 0;
@@ -807,10 +850,17 @@ int login(char* user, char* pass) {
  */
 int main(int argc, char *argv[]) {
 	FuseDispatcher *dispatcher;
+	char* help;
 	char* username;
 	char* password;
+	char* server;
+	char* port;
+	char* usessl;
 	int nOptions;
 	char* dest[50];
+	
+	if (help_option(argc, argv) != 0)
+		return 0;
 	
 	dispatcher = new FuseDispatcher();
 	
@@ -820,18 +870,23 @@ int main(int argc, char *argv[]) {
 	dispatcher->set_read	(&ImapFuse_read);
 	
 	// Mount options
+	
 	mount_options(argc, argv, (char*)"-u", &username);	// Get the username
 	mount_options(argc, argv, (char*)"-w", &password);	// Get the password
 	if (username == NULL || password == NULL)  {
 		cout << endl << "** -u and -w options are required!" << endl;
 		return -1;
 	}
+	
+	mount_options(argc, argv, (char*)"-s", &server);
+	mount_options(argc, argv, (char*)"-p", &port);
+	mount_options(argc, argv, (char*)"-l", &usessl);
 		
 	// Copy valid mount options
 	nOptions = copy_options(argc, argv, dest);
 	
 	// Make log in
-	if (login(username, password) == -1) {
+	if (login(username, password, server, port, usessl) == -1) {
 		cout << endl << "** Login failed!" << endl;
 		return -1;
 	}
